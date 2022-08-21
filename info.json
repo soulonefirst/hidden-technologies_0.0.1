@@ -1,0 +1,9 @@
+{
+  "name": "hidden-technologies",
+  "version": "0.0.1",
+  "title": "Hidden Technologies",
+  "author": "Soulone",
+  "factorio_version": "1.1",
+  "dependencies": ["base >= 1.1"],
+  "description": "This mod hide technologies in enemy spawners."
+}
