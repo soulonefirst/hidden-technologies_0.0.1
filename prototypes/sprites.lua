@@ -1,21 +1,22 @@
 ICONPATH = "__hidden-technologies__/graphics/"
+local mod_name = "hidden-technologies"
 
 local attributesList = {
-  "ht_technology_data",
-  "ht_far_build",
-  "ht_fast_run",
-  "ht_inventory_slots",
-  "ht_long_reach",
-  "ht_more_hp",
-  "ht_trash_slots",
-  "ht_more_choise",
-  "ht_crafting_speed"
+  "technology_data",
+  "far_build",
+  "fast_run",
+  "inventory_slots",
+  "long_reach",
+  "more_hp",
+  "trash_slots",
+  "more_choise",
+  "crafting_speed"
 }
 
 local function createSprite(att)
   local p = {}
   p.type = "sprite"
-  p.name = att .. "_sprite"
+  p.name = mod_name.."_"..att .. "_sprite"
   p.filename = ICONPATH .. att .. "_icon.png"
   --p.priority = "extra-high-no-scale"
   p.width = 128

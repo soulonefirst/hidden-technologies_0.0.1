@@ -1,43 +1,60 @@
 -- control.lua
-local choose_frame = nil
+local event = require("__flib__.event")
+local migration = require("__flib__.migration")
+
+local s_player = require("scripts.players-manager")
+local s_migration = require("scripts.migrations")
+local s_gui = require("scripts.gui-manager")
+local s_choose_tab = require("scripts.gui-templates.choose-tab")
+
 local debug = false
+local mod_name = script.mod_name
+
+local default_data = {
+    spawner_destoryed_after_drop = 0,
+    choose_options = 3,
+    tech_droped = 0
+}
 local powerups = {
     more_choise = { description = "More reward to choose", action = function(force)
         global.choose_options = global.choose_options + 1
-        if debug then game.print("more_choise".." - "..global.choose_options) end
+        if debug then game.print("more_choise" .. " - " .. global.choose_options) end
     end },
     more_hp = { description = "Max health +10", action = function(force)
         force.character_health_bonus = force.character_health_bonus + 10
-        if debug then game.print("more_hp".." - "..force.character_health_bonus) end
+        if debug then game.print("more_hp" .. " - " .. force.character_health_bonus) end
     end },
     long_reach = { description = "Reach distance +10", action = function(force)
         force.character_reach_distance_bonus = force.character_reach_distance_bonus + 10
-        if debug then game.print("long_reach".." - "..force.character_reach_distance_bonus) end
+        if debug then game.print("long_reach" .. " - " .. force.character_reach_distance_bonus) end
     end },
     far_build = { description = "Build distance +10", action = function(force)
         force.character_build_distance_bonus = force.character_build_distance_bonus + 10
-        if debug then game.print("far_build".." - "..force.character_build_distance_bonus) end
+        if debug then game.print("far_build" .. " - " .. force.character_build_distance_bonus) end
     end },
     fast_run = { description = "Run speed +20%", action = function(force)
         force.character_running_speed_modifier = force.character_running_speed_modifier + 0.2
-        if debug then game.print("fast_run".." - "..force.character_running_speed_modifier) end
+        if debug then game.print("fast_run" .. " - " .. force.character_running_speed_modifier) end
     end },
     inventory_slots = { description = "Inventory slot +5", action = function(force)
         force.character_inventory_slots_bonus = force.character_inventory_slots_bonus + 5
-        if debug then game.print("inventory_slots".." - "..force.character_inventory_slots_bonus) end
+        if debug then game.print("inventory_slots" .. " - " .. force.character_inventory_slots_bonus) end
     end },
     trash_slots = { description = "Trash slot +5", action = function(force)
         force.character_trash_slot_count = force.character_trash_slot_count + 5
-        if debug then game.print("trash_slots".." - "..force.character_trash_slot_count) end
+        if debug then game.print("trash_slots" .. " - " .. force.character_trash_slot_count) end
     end },
     crafting_speed = { description = "Crafting speed + 20%", action = function(force)
-        for _, player in ipairs(force.players) do            
+        for _, player in ipairs(force.players) do
             player.character_crafting_speed_modifier = player.character_crafting_speed_modifier + 0.2
-            if debug then game.print("crafting_speed".." - "..player.name.." - "..player.character_crafting_speed_modifier) end
+            if debug then game.print("crafting_speed" ..
+                    " - " .. player.name .. " - " .. player.character_crafting_speed_modifier)
+            end
         end
     end }
 }
 
+-- COMMANDS
 commands.add_command('sp', nil, function(comand)
     game.get_player(comand.player_index).get_main_inventory().insert({
         name = 'combat-shotgun',
@@ -47,7 +64,7 @@ commands.add_command('sp', nil, function(comand)
         name = 'piercing-shotgun-shell',
         count = 100
     })
-    game.get_player(comand.player_index).force.character_health_bonus = 10000000  
+    game.get_player(comand.player_index).force.character_health_bonus = 10000000
     game.get_player(comand.player_index).force.character_running_speed_modifier = 5
     game.get_player(comand.player_index).surface.spill_item_stack(
         game.get_player(comand.player_index).position,
@@ -57,52 +74,48 @@ commands.add_command('sp', nil, function(comand)
         },
         true
     )
-
+end)
+commands.add_command('re', nil, function(comand)
+    for key, value in pairs(default_data) do
+        global[key] = value
+    end
+    s_gui.refresh()
 end)
 
-local default_data = {
-    players = {},
-    spawner_destoryed_after_drop = 0,
-    choose_options = 3,
-    tech_droped = 0
-}
-script.on_init(function()
+-- BOOTSTRAP
+
+event.on_init(function()
     for key, value in pairs(default_data) do
         global[key] = value
     end
 end)
 
-script.on_load(function()
+event.on_configuration_changed(function(e)
+    if migration.on_config_changed(e, s_migration) then
+
+    end
     for key, value in pairs(default_data) do
         if not global[key] then
-            global[key] = value            
+            global[key] = value
         end
     end
 end)
 
-script.on_event(defines.events.on_player_created, function(event)
-    global.players[event.player_index] = {}
-end)
-
-script.on_event(defines.events.on_gui_click, function(event)
-    if event.element.tags.action == 'choose_technology' then
-        game.get_player(event.player_index).force.technologies[event.element.tags.name].enabled = true
-        if global.players[event.player_index].choose_frame_open then
-            choose_frame.destroy()
-            global.players[event.player_index].choose_frame_open = nil
-        end
-    elseif event.element.tags.action == "choose_power_up" then
-        powerups[event.element.tags.name].action(game.get_player(event.player_index).force)
-        if global.players[event.player_index].choose_frame_open then
-            choose_frame.destroy()
-            global.players[event.player_index].choose_frame_open = nil
-        end
+-- GUI
+event.register(s_gui.on_button_click,  function(e)
+    local player = s_player.get(e.event.player_index)
+    if e.msg.type == "technology"  then
+        player.force.technologies[e.msg.name].enabled = true
     end
+    if e.msg.type == "powerup" then
+        powerups[e.msg.name].action(player.force)
+    end
+    s_gui.delete(e.msg.gui, player.index)
 end)
 
 script.on_event(defines.events.on_script_trigger_effect, function(event)
-    if event.effect_id == "spawner_destroyed" then            
-        if  global.spawner_destoryed_after_drop >= global.tech_droped  then
+    if event.effect_id == "spawner_destroyed" then
+        if global.spawner_destoryed_after_drop >= global.tech_droped then
             game.get_surface(event.surface_index).spill_item_stack(
                 event.source_entity.position,
                 {
@@ -121,8 +134,8 @@ script.on_event(defines.events.on_script_trigger_effect, function(event)
 end)
 
 script.on_event(defines.events.on_player_main_inventory_changed, function(event)
-
-    local player = game.get_player(event.player_index)
+    local player = s_player.get(event.player_index)
+    
     local itemCount = player.get_main_inventory().remove({
         name = 'technologies_data',
         count = 1
@@ -153,64 +166,36 @@ script.on_event(defines.events.on_player_main_inventory_changed, function(event)
                     end
                 end
             end
-            
-        end
-            if global.players[event.player_index].choose_frame_open ~= nil then
-                choose_frame.destroy()                
-            end
-            global.players[event.player_index].choose_frame_open = true
-            local screen_element = player.gui.screen
-            choose_frame = screen_element.add {
-                type = 'frame',
-                name = 'ht_choose_frame',
-                caption = 'Choose reward',
-                style = "ht_choose_frame_style"
-            }
-            choose_frame.auto_center = true
 
-            local content_frame = choose_frame.add {
-                type = 'frame',
-                name = 'ht_content_frame',
-                direction = 'vertical',
-                style = "ht_content_frame_style"
-            }
-            local controls_flow = content_frame.add {
-                type = 'flow',
-                name = 'ht_controls_flow',
-                direction = 'horizontal',
-                style = "ht_controls_flow_style"
-            }
-            for _, random_name in pairs(random_technology_name) do
-                local prototype = prototypes[random_name]
-                local prototypy_name = prototype.name
-                controls_flow.add {
-                    type = 'sprite-button',
-                    tags = {
-                        action = "choose_technology",
-                        name = prototypy_name
-                    },
-                    sprite = 'technology/' .. prototypy_name,
-                    tooltip = prototype.localised_description,
-                    style = "ht_choose_button_style"
-                }
-            end
+        end
+
+        -----
+        local sprite_buttons = {}
+
+        for _, random_name in pairs(random_technology_name) do
+            local prototype = prototypes[random_name]
+            table.insert(sprite_buttons, {
+                name = random_name,
+                type = "technology",
+                tooltip = prototype.localised_description,
+                sprite = 'technology/'.. random_name,
+            })
+        end
+
         for i = 1, global.choose_options - technology_to_choose do
             local power_up_keys = {}
             for k, _ in pairs(powerups) do
                 table.insert(power_up_keys, k)
             end
             local random_power_up_key = power_up_keys[math.random(#power_up_keys)]
-            controls_flow.add {
-                type = 'sprite-button',
-                tags = {
-                    action = "choose_power_up",
-                    name = random_power_up_key
-                },
-                sprite = "ht_" .. random_power_up_key .. "_sprite",
+            table.insert(sprite_buttons, {
+                name = random_power_up_key,
+                type = "powerup",
                 tooltip = powerups[random_power_up_key].description,
-                style = "ht_choose_button_style"
-            }
+                sprite = mod_name.."_"..random_power_up_key.."_sprite",
+            })
         end
+        s_gui.add(s_choose_tab(sprite_buttons, player), player.index)
 
     end
 end)

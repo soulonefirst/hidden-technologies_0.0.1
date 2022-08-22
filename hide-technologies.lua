@@ -12,11 +12,11 @@ data:extend{
   {
     type = "item",
     name = 'technologies_data',
-    icon = "__hidden-technologies__/graphics/ht_technology_data_icon.png",
+    icon = "__hidden-technologies__/graphics/technology_data_icon.png",
     icon_size = 128,
     pictures =
     {
-      { size = 128, filename = "__hidden-technologies__/graphics/ht_technology_data_icon.png", scale = 0.4},
+      { size = 128, filename = "__hidden-technologies__/graphics/technology_data_icon.png", scale = 0.4},
     },
     
     stack_size = 1
