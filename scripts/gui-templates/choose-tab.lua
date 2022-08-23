@@ -1,60 +1,69 @@
 local gui = require("__flib__.gui")
 local mod_name = script.mod_name
 
-local template = {
-
-    frame = {
-        type = "frame",
-        name = "choose_menu",
-        direction = "horizontal",
-        caption = 'Choose reward',
-        visible = true,
-        ref = { "window" },
-        actions = {
-            --on_closed = { gui = "choose_menu" },
-        }
-    },
-    flow = {
-        type = 'flow',
-        direction = 'horizontal',
-        style = mod_name .. "_flow_style",
-        ref = { "flow" },
-        actions = {
-            --on_click = { gui = "choose_menu"},
-        }
-    },
-    sprite_button = {
-        type = 'sprite-button',
-        sprite = "",
-        tooltip = "",
-        style = mod_name .. "_button_style",
-        actions = {
-            on_click = { },
-        }
-    }
+local choose_tab = {
+    name = "choose_tab"
 }
+function choose_tab.built(player_index)
+    local player = game.get_player(player_index)
 
---- @param sprite_buttons_data table name, tooltip, action
-local function show(sprite_buttons_data, player)
-    
-    local flow = template.flow    
-    
-    for _, value in ipairs(sprite_buttons_data) do
-        local button = {}
-        for k, v in pairs(template.sprite_button) do button[k] = v end
-        button.sprite = value.sprite
-        button.tooltip = value.tooltip
-        button.actions.on_click = {gui = "choose_menu", name = value.name, type = value.type}
-        flow[#flow+1] = button
-    end    
+    local refs = gui.build(player.gui.screen, {
+        {
+            type = "frame",
+            name = choose_tab.name,
+            direction = "horizontal",
+            caption = 'Choose reward',
+            visible = false,
+            ref = { "window" },
+            {
+                type = 'flow',
+                direction = 'horizontal',
+                style = mod_name .. "_flow_style",
+                ref = { "flow" }
+            }
+        }
+    })
 
-    local frame = template.frame
-    frame[#frame+1] = flow
+    global.players[player_index][choose_tab.name] = {
+        refs = refs
+    }
 
-    local refs = gui.build(player.gui.screen, {frame})
-    refs.window.force_auto_center()
-    refs.window.bring_to_front()
-    return refs
+    refs.window.visible = false
 end
 
-return show
+function choose_tab.open(flow, sprite_buttons_data)
+    local i = 1
+    local children = flow.children
+    for _, button_data in ipairs(sprite_buttons_data) do
+        if not children[i] then
+            gui.add(flow, 
+                {
+                    type = 'sprite-button',
+                    sprite = button_data.sprite,
+                    tooltip = button_data.tooltip,
+                    style = mod_name .. "_button_style",
+                    actions = {
+                        on_click = "choose"
+                    },
+                    tags = { name = button_data.name, type = button_data.type }
+                }
+            )
+        else
+            gui.update(children[i], 
+                {
+                    elem_mods = {
+                        sprite = button_data.sprite,
+                        tooltip = button_data.tooltip
+                    },
+                    tags = { name = button_data.name, type = button_data.type }
+                
+            })
+        end
+        i = i + 1
+    end
+    for j = i + 1, #children do
+        children[i][j].destroy()
+    end
+end
+
+return choose_tab

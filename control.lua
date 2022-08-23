@@ -1,11 +1,10 @@
 -- control.lua
 local event = require("__flib__.event")
 local migration = require("__flib__.migration")
+local gui = require("__flib__.gui")
 
-local s_player = require("scripts.players-manager")
 local s_migration = require("scripts.migrations")
-local s_gui = require("scripts.gui-manager")
-local s_choose_tab = require("scripts.gui-templates.choose-tab")
+local choose_tab = require("scripts.gui-templates.choose-tab")
 
 local debug = false
 local mod_name = script.mod_name
@@ -79,12 +78,12 @@ commands.add_command('re', nil, function(comand)
     for key, value in pairs(default_data) do
         global[key] = value
     end
-    s_gui.refresh()
 end)
 
 -- BOOTSTRAP
 
 event.on_init(function()
+    global.players = {}
     for key, value in pairs(default_data) do
         global[key] = value
     end
@@ -100,17 +99,35 @@ event.on_configuration_changed(function(e)
         end
     end
 end)
+event.on_player_created(function(e)
+    global.players[e.player_index] = {}
+    choose_tab.built(e.player_index)
+end)
 
 -- GUI
-event.register(s_gui.on_button_click,  function(e)
-    local player = s_player.get(e.event.player_index)
-    if e.msg.type == "technology"  then
-        player.force.technologies[e.msg.name].enabled = true
+local function choose(e, tag)
+    local player = game.get_player(e.player_index)
+    if tag[mod_name].type == "technology"  then
+        player.force.technologies[tag[mod_name].name].enabled = true
     end
-    if e.msg.type == "powerup" then
-        powerups[e.msg.name].action(player.force)
+    if tag.type == "powerup" then
+        powerups[tag[mod_name].name].action(player.force)
     end
-    s_gui.delete(e.msg.gui, player.index)
+
+    global.players[e.player_index][choose_tab.name].refs.window.visible = false
+    if player.opened then
+        player.opened = nil
+      end
+end
+gui.hook_events(function(e)
+    local action = gui.read_action(e)
+  if not action then
+    return
+end
+    
+if action == "choose" then
+    choose(e, e.element.tags )
+end
 end)
 
 script.on_event(defines.events.on_script_trigger_effect, function(event)
@@ -134,7 +151,7 @@ script.on_event(defines.events.on_script_trigger_effect, function(event)
 end)
 
 script.on_event(defines.events.on_player_main_inventory_changed, function(event)
-    local player = s_player.get(event.player_index)
+    local player = game.get_player(event.player_index)
     
     local itemCount = player.get_main_inventory().remove({
         name = 'technologies_data',
@@ -195,7 +212,12 @@ script.on_event(defines.events.on_player_main_inventory_changed, function(event)
                 sprite = mod_name.."_"..random_power_up_key.."_sprite",
             })
         end
-        s_gui.add(s_choose_tab(sprite_buttons, player), player.index)
+        local refs = global.players[event.player_index][choose_tab.name].refs
+        local gui = refs.window
+        gui.visible = true
+        gui.bring_to_front()
+        player.opened = gui
+        choose_tab.open(refs.flow , sprite_buttons)
 
     end
 end)
