@@ -216,6 +216,7 @@ script.on_event(defines.events.on_player_main_inventory_changed, function(event)
         local gui = refs.window
         gui.visible = true
         gui.bring_to_front()
+        gui.force_auto_center()
         player.opened = gui
         choose_tab.open(refs.flow , sprite_buttons)
 
