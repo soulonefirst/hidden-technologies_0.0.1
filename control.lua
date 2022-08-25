@@ -84,6 +84,8 @@ end)
 
 event.on_init(function()
     global.players = {}
+    remote.call("freeplay", "set_disable_crashsite", true)
+    remote.call("freeplay", "set_skip_intro", true)
     for key, value in pairs(default_data) do
         global[key] = value
     end
